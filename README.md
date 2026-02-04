@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let basic_patch = serde_json::to_string(&serde_patch::diff(&old, &new)?)?;
     // → {"active":false,"age":31,"profile":{"avatar_url":null,"bio":"Senior software engineer"}}
 
-    // Diff with forced field – includes "id" even though unchanged
+    // Diff with forced field – includes "id" and "profile.bio" even though unchanged
     let forced_patch = serde_json::to_string(&serde_patch::diff_including(&old, &new, &["id", "profile.bio"])?)?;
     // → {"active":false,"age":31,"id":1001,"profile":{"avatar_url":null,"bio":"Senior software engineer"}}
 
