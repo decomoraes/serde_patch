@@ -1,10 +1,14 @@
-pub mod apply_patch;
-pub mod apply_patch_mut;
-pub mod diff_patch;
+mod apply_patch;
+mod apply_patch_mut;
+mod diff_patch;
+
+pub use apply_patch::apply;
+pub use apply_patch_mut::apply_mut;
+pub use diff_patch::diff;
+pub use diff_patch::diff_including;
 
 #[cfg(test)]
 mod tests {
-    use crate::{apply, apply_mut, diff};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 
@@ -47,11 +51,11 @@ mod tests {
             }),
         };
 
-        let patch = serde_json::to_string(&diff!(&old, &new; ["id"]).unwrap()).unwrap();
+        let patch = serde_json::to_string(&crate::diff(&old, &new).unwrap()).unwrap();
 
         assert_eq!(
             patch,
-            r#"{"active":false,"age":31,"id":1001,"profile":{"avatar_url":null,"bio":"Senior software engineer"}}"#
+            r#"{"active":false,"age":31,"profile":{"avatar_url":null,"bio":"Senior software engineer"}}"#
         );
     }
 
@@ -78,7 +82,7 @@ mod tests {
             }),
         };
 
-        let patch_value = diff!(&old, &new; ["profile.bio"]).unwrap();
+        let patch_value = crate::diff_including(&old, &new, &["profile.bio"]).unwrap();
 
         let expected = json!({
             "age": 31,
@@ -116,7 +120,7 @@ mod tests {
             }
         "#;
 
-        let updated: User = apply!(current, patch).unwrap();
+        let updated: User = crate::apply(current, patch).unwrap();
 
         assert_eq!(
             updated,
@@ -157,7 +161,7 @@ mod tests {
             }
         "#;
 
-        apply_mut!(&mut current, patch).unwrap();
+        crate::apply_mut(&mut current, patch).unwrap();
 
         assert_eq!(
             current,

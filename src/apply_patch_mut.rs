@@ -3,18 +3,22 @@ use serde_json::{Map, Value};
 
 /// Applies a JSON Merge Patch (RFC 7396) in-place.
 ///
-/// Modifies `current` directly by merging the patch.
-/// Fields present in the patch replace the corresponding fields.
-/// `null` in the patch removes the field (if the target type supports it, e.g. `Option<T>`).
-/// Absent fields remain unchanged.
+/// Modifies the current value directly.
 ///
-/// The patch can be any type that implements `AsRef<[u8]>` (`&str`, `String`, `Vec<u8>`, `&[u8]`, etc.).
+/// # Example
 ///
-/// # Errors
+/// ```rust
+/// #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
+/// struct User { id: u32, name: String }
 ///
-/// Returns an error if serialization, deserialization, or patch parsing fails.
-#[allow(dead_code)]
-pub fn apply_merge_patch_mut<T, P>(current: &mut T, patch: P) -> Result<(), serde_json::Error>
+/// let mut user = User { id: 1, name: "old".to_string() };
+/// let patch = r#"{ "name": "new" }"#;
+///
+/// serde_patch::apply_mut(&mut user, patch).unwrap();
+/// assert_eq!(user.name, "new");
+/// assert_eq!(user.id, 1);
+/// ```
+pub fn apply_mut<T, P>(current: &mut T, patch: P) -> Result<(), serde_json::Error>
 where
     T: Serialize + DeserializeOwned,
     P: AsRef<[u8]>,
@@ -44,28 +48,4 @@ fn merge_patch(target: &mut Value, patch: &Value) {
     } else {
         *target = patch.clone();
     }
-}
-
-/// Applies a JSON Merge Patch (RFC 7396) in-place.
-///
-/// Modifies the current value directly.
-///
-/// # Example
-///
-/// ```
-/// use serde_patch::apply_mut;
-///
-/// #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
-/// struct User { id: u32, name: String }
-///
-/// let mut user = User { id: 1, name: "old".to_string() };
-/// let patch = r#"{ "name": "new" }"#;
-///
-/// apply_mut!(&mut user, patch).unwrap();
-/// assert_eq!(user.name, "new");
-/// assert_eq!(user.id, 1);
-/// ```
-#[macro_export]
-macro_rules! apply_mut {
-    ($current:expr, $patch:expr) => {{ $crate::apply_patch_mut::apply_merge_patch_mut($current, $patch) }};
 }

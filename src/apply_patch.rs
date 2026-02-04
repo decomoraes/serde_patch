@@ -1,17 +1,24 @@
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Map, Value};
 
-/// Applies a JSON Merge Patch (RFC 7396) to the given value.
+/// Applies a JSON Merge Patch (RFC 7396).
 ///
-/// Consumes `current`, merges the patch, and returns a new updated value.
-/// Fields present in the patch replace the corresponding fields in `current`.
-/// `null` in the patch removes the field (if the target type supports it, e.g. `Option<T>`).
-/// Absent fields remain unchanged.
+/// Consumes the current value and returns the updated value.
 ///
-/// # Errors
+/// # Example
 ///
-/// Returns an error if serialization, deserialization, or patch parsing fails.
-pub fn apply_merge_patch<T>(current: T, patch_json: &str) -> Result<T, serde_json::Error>
+/// ```
+/// #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
+/// struct User { id: u32, name: String }
+///
+/// let current = User { id: 1, name: "old".to_string() };
+/// let patch = r#"{ "name": "new" }"#;
+///
+/// let updated = serde_patch::apply(current, patch).unwrap();
+/// assert_eq!(updated.name, "new");
+/// assert_eq!(updated.id, 1);
+/// ```
+pub fn apply<T>(current: T, patch_json: &str) -> Result<T, serde_json::Error>
 where
     T: Serialize + DeserializeOwned,
 {
@@ -44,28 +51,4 @@ fn merge_patch(target: &mut Value, patch: &Value) {
     } else {
         *target = patch.clone();
     }
-}
-
-/// Applies a JSON Merge Patch (RFC 7396).
-///
-/// Consumes the current value and returns the updated value.
-///
-/// # Example
-///
-/// ```
-/// use serde_patch::apply;
-///
-/// #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
-/// struct User { id: u32, name: String }
-///
-/// let current = User { id: 1, name: "old".to_string() };
-/// let patch = r#"{ "name": "new" }"#;
-///
-/// let updated = apply!(current, patch).unwrap();
-/// assert_eq!(updated.name, "new");
-/// assert_eq!(updated.id, 1);
-/// ```
-#[macro_export]
-macro_rules! apply {
-    ($current:expr, $patch_json:expr) => {{ $crate::apply_patch::apply_merge_patch($current, $patch_json) }};
 }

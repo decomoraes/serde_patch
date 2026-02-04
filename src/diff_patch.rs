@@ -54,22 +54,16 @@ pub fn compute_diff(
     }
 }
 
-/// Returns true if a diff value represents no changes (internal).
-pub fn is_empty_diff(value: &Value) -> bool {
-    matches!(value, Value::Object(map) if map.is_empty()) || value.is_null()
-}
-
 /// Computes a JSON diff suitable for use as a Merge Patch (RFC 7396).
 ///
 /// Returns a `serde_json::Value` containing only changed fields (with new values).
 /// If no changes, returns an empty object.
 ///
-/// The variant with forced fields includes specified paths even if unchanged.
+/// See also [`diff_including`] for a version that can force inclusion of specific fields.
 ///
 /// # Example
 ///
 /// ```
-/// use serde_patch::diff;
 /// use serde_json::json;
 ///
 /// #[derive(serde::Serialize)]
@@ -78,37 +72,44 @@ pub fn is_empty_diff(value: &Value) -> bool {
 /// let old = User { id: 1, name: "old".to_string(), age: 31 };
 /// let new = User { id: 1, name: "new".to_string(), age: 31 };
 ///
-/// let patch = diff!(old, new).unwrap();
+/// let patch = serde_patch::diff(&old, &new).unwrap();
 /// assert_eq!(patch, json!({ "name": "new" }));
-///
-/// // Force inclusion of "id" even though unchanged
-/// let patch_forced = diff!(old, new; ["id"]).unwrap();
-/// assert_eq!(patch_forced, json!({ "id": 1, "name": "new" }));
 /// ```
-#[macro_export]
-macro_rules! diff {
-    ($old:expr, $new:expr) => {{
-        (|| -> Result<serde_json::Value, serde_json::Error> {
-            use serde_json::Value;
-            use std::collections::HashSet;
+pub fn diff<T: serde::Serialize>(old: &T, new: &T) -> Result<serde_json::Value, serde_json::Error> {
+    let old_val = serde_json::to_value(old)?;
+    let new_val = serde_json::to_value(new)?;
+    let diff_opt = compute_diff(Some(&old_val), &new_val, &HashSet::new(), "");
+    Ok(diff_opt.unwrap_or(serde_json::Value::Object(serde_json::Map::new())))
+}
 
-            let old_val = serde_json::to_value(&$old)?;
-            let new_val = serde_json::to_value(&$new)?;
-            let diff_opt = $crate::diff_patch::compute_diff(Some(&old_val), &new_val, &HashSet::new(), "");
-            Ok(diff_opt.unwrap_or(Value::Object(serde_json::Map::new())))
-        })()
-    }};
-
-    ($old:expr, $new:expr; [ $($field:expr),* ]) => {{
-        (|| -> Result<serde_json::Value, serde_json::Error> {
-            use serde_json::{Map, Value};
-            use std::collections::HashSet;
-
-            let forced: HashSet<String> = [ $( $field.to_string() ),* ].into_iter().collect();
-            let old_val = serde_json::to_value(&$old)?;
-            let new_val = serde_json::to_value(&$new)?;
-            let diff_opt = $crate::diff_patch::compute_diff(Some(&old_val), &new_val, &forced, "");
-            Ok(diff_opt.unwrap_or(Value::Object(Map::new())))
-        })()
-    }};
+/// Computes a JSON diff, forcing specific fields to be included even if unchanged.
+///
+/// This is useful when you need to provide context (like an ID) in the patch,
+/// regardless of whether that field has changed.
+///
+/// # Example
+///
+/// ```
+/// use serde_json::json;
+///
+/// #[derive(serde::Serialize)]
+/// struct User { id: u32, name: String }
+///
+/// let old = User { id: 1, name: "old".to_string() };
+/// let new = User { id: 1, name: "new".to_string() };
+///
+/// // "id" is included even though it didn't change
+/// let patch = serde_patch::diff_including(&old, &new, &["id"]).unwrap();
+/// assert_eq!(patch, json!({ "id": 1, "name": "new" }));
+/// ```
+pub fn diff_including<T: serde::Serialize>(
+    old: &T,
+    new: &T,
+    including: &[&str],
+) -> Result<serde_json::Value, serde_json::Error> {
+    let old_val = serde_json::to_value(old)?;
+    let new_val = serde_json::to_value(new)?;
+    let including_set: HashSet<String> = including.iter().map(|s| s.to_string()).collect();
+    let diff_opt = compute_diff(Some(&old_val), &new_val, &including_set, "");
+    Ok(diff_opt.unwrap_or(serde_json::Value::Object(serde_json::Map::new())))
 }

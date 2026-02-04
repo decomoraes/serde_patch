@@ -6,14 +6,15 @@ Provides macros to generate partial patches (diff) and apply them immutably or i
 
 ```toml
 [dependencies]
-serde-patch = "0.1.0"
+serde-patch = "0.2.0"
 ```
 
 ## Features
 
-- `diff!` – generates a minimal patch containing only changed fields (and optional forced fields).
-- `apply!` – consumes the current value and returns an updated one.
-- `apply_mut!` – modifies the current value in-place.
+- `diff` – generates a minimal patch containing only changed fields.
+- `diff_including` – generates a patch including specific fields even if unchanged.
+- `apply` – consumes the current value and returns an updated one.
+- `apply_mut` – modifies the current value in-place.
 
 The patch can be any type that implements `AsRef<[u8]>` (`&str`, `String`, `Vec<u8>`, etc.).
 
@@ -21,7 +22,6 @@ The patch can be any type that implements `AsRef<[u8]>` (`&str`, `String`, `Vec<
 
 ```rust
 use serde::{Deserialize, Serialize};
-use serde_patch::{apply, apply_mut, diff};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 struct Profile {
@@ -38,7 +38,7 @@ struct User {
     profile: Option<Profile>,
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let old = User {
         id: 1001,
         username: "alice".to_string(),
@@ -62,29 +62,29 @@ fn main() {
     };
 
     // Basic diff – only changed fields
-    let basic_patch = serde_json::to_string(&diff!(&old, &new).unwrap()).unwrap();
+    let basic_patch = serde_json::to_string(&serde_patch::diff(&old, &new)?)?;
     // → {"active":false,"age":31,"profile":{"avatar_url":null,"bio":"Senior software engineer"}}
 
-
-    // Diff with forced field – includes "id" amd "profile.bio" even though unchanged
-    let forced_patch = serde_json::to_string(&diff!(&old, &new; ["id", "profile.bio"]).unwrap()).unwrap();
+    // Diff with forced field – includes "id" even though unchanged
+    let forced_patch = serde_json::to_string(&serde_patch::diff_including(&old, &new, &["id"])?)?;
     // → {"active":false,"age":31,"id":1001,"profile":{"avatar_url":null,"bio":"Senior software engineer"}}
 
-
     // Apply immutably
-    let updated = apply!(old.clone(), &basic_patch).unwrap();
+    let updated = serde_patch::apply(old.clone(), &basic_patch)?;
     assert_eq!(updated, new);
 
     // Apply mutably
     let mut current = old;
-    apply_mut!(&mut current, &forced_patch).unwrap();
+    serde_patch::apply_mut(&mut current, &forced_patch)?;
     assert_eq!(current, new);
+
+    Ok(())
 }
 ```
 
-## Macros
+## Functions
 
-- `diff!(old, new)` – basic diff (only changed fields).
-- `diff!(old, new; ["path.to.field", ...])` – include forced fields even if unchanged.
-- `apply!(current, patch)` – immutable.
-- `apply_mut!(&mut current, patch)` – mutable.
+- `diff(&old, &new)` – basic diff (only changed fields).
+- `diff(&old, &new, $["path.to.field", ...])` – include forced fields even if unchanged.
+- `apply(current, &patch)` – immutable.
+- `apply_mut(&mut current, &patch)` – mutable.
