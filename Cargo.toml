@@ -1,0 +1,20 @@
+[package]
+name = "serde-patch"
+version = "0.1.0"
+edition = "2024"
+authors = ["André de Moraes Barros <deco.moraes@icloud.com>"]
+
+
+description = "JSON Merge Patch (RFC 7396) with optional recursive diff generation for Serde-derived structs"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/decomoraes/serde-patch"
+keywords = ["serde", "json", "merge-patch", "patch", "partial-update"]
+categories = ["encoding", "data-structures"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[features]
+default = ["macro"]
+macro = []

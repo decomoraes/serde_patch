@@ -1,25 +1,3 @@
-# serde-patch
-
-JSON Merge Patch (RFC 7396) for Serde-derived types.
-
-Provides macros to generate partial patches (diff) and apply them immutably or in-place.
-
-```toml
-[dependencies]
-serde-patch = "0.1.0"
-```
-
-## Features
-
-- `diff!` – generates a minimal patch containing only changed fields (and optional forced fields).
-- `apply!` – consumes the current value and returns an updated one.
-- `apply_mut!` – modifies the current value in-place.
-
-The patch can be any type that implements `AsRef<[u8]>` (`&str`, `String`, `Vec<u8>`, etc.).
-
-## Example
-
-```rust
 use serde::{Deserialize, Serialize};
 use serde_patch::{apply, apply_mut, diff};
 
@@ -63,28 +41,21 @@ fn main() {
 
     // Basic diff – only changed fields
     let basic_patch = serde_json::to_string(&diff!(&old, &new).unwrap()).unwrap();
-    // → {"active":false,"age":31,"profile":{"avatar_url":null,"bio":"Senior software engineer"}}
+    println!("Basic patch (no forced fields):\n{}", basic_patch);
 
-
-    // Diff with forced field – includes "id" amd "profile.bio" even though unchanged
-    let forced_patch = serde_json::to_string(&diff!(&old, &new; ["id", "profile.bio"]).unwrap()).unwrap();
-    // → {"active":false,"age":31,"id":1001,"profile":{"avatar_url":null,"bio":"Senior software engineer"}}
-
+    // Diff with forced field – includes "id" even though unchanged
+    let forced_patch = serde_json::to_string(&diff!(&old, &new; ["id"]).unwrap()).unwrap();
+    println!("\nPatch with forced \"id\":\n{}", forced_patch);
 
     // Apply immutably
     let updated = apply!(old.clone(), &basic_patch).unwrap();
-    assert_eq!(updated, new);
+    println!("\nImmutable apply result:\n{:#?}", updated);
 
     // Apply mutably
     let mut current = old;
     apply_mut!(&mut current, &forced_patch).unwrap();
+    println!("\nMutable apply result:\n{:#?}", current);
+
+    assert_eq!(updated, new);
     assert_eq!(current, new);
 }
-```
-
-## Macros
-
-- `diff!(old, new)` – basic diff (only changed fields).
-- `diff!(old, new; ["path.to.field", ...])` – include forced fields even if unchanged.
-- `apply!(current, patch)` – immutable.
-- `apply_mut!(&mut current, patch)` – mutable.
