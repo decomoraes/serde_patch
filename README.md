@@ -6,7 +6,7 @@ Provides macros to generate partial patches (diff) and apply them immutably or i
 
 ```toml
 [dependencies]
-serde-patch = "0.2.0"
+serde-patch = "0.2"
 ```
 
 ## Features
