@@ -85,6 +85,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Functions
 
 - `diff(&old, &new)` – basic diff (only changed fields).
-- `diff(&old, &new, $["path.to.field", ...])` – include forced fields even if unchanged.
+- `diff_including(&old, &new, &["path.to.field", ...])` – include forced fields even if unchanged.
 - `apply(current, &patch)` – immutable.
 - `apply_mut(&mut current, &patch)` – mutable.
